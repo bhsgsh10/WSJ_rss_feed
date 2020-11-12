@@ -1,6 +1,6 @@
 # WSJ RSS Feed
 
-This app parses Wall Street Journal's RSS Feed for the following topics:
+This app parses and displays Wall Street Journal's RSS Feed for the following topics:
 - Opinion
 - World News
 - US Business
