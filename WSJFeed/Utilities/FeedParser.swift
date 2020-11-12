@@ -16,11 +16,11 @@ class FeedParser: NSObject {
     private var currentValue: String = ""
     private var currentElement: String = ""
     private var currentDictionary: [String: Any]?
-    private var feedKeys = Set([FeedKeys.title,
-                                FeedKeys.pubDate,
-                                FeedKeys.link,
-                                FeedKeys.description,
-                                FeedKeys.category])
+    private var feedTags = Set([FeedTags.title,
+                                FeedTags.pubDate,
+                                FeedTags.link,
+                                FeedTags.description,
+                                FeedTags.category])
     
     
     override init() {
@@ -42,12 +42,12 @@ class FeedParser: NSObject {
         if let feedResults = results {
             for result in feedResults {
                 var feedItem = FeedItem()
-                feedItem.title = result[FeedKeys.title] as? String
-                feedItem.link = result[FeedKeys.link] as? String
-                feedItem.category = result[FeedKeys.category] as? String
-                feedItem.description = result[FeedKeys.description] as? String
+                feedItem.title = result[FeedTags.title] as? String
+                feedItem.link = result[FeedTags.link] as? String
+                feedItem.category = result[FeedTags.category] as? String
+                feedItem.description = result[FeedTags.description] as? String
                 
-                let modifiedDate = handleDate(dateString: result[FeedKeys.pubDate] as? String)
+                let modifiedDate = handleDate(dateString: result[FeedTags.pubDate] as? String)
                 feedItem.publishedDate = modifiedDate
                 
                 feedItems.append(feedItem)
@@ -88,13 +88,13 @@ extension FeedParser: XMLParserDelegate {
                 attributes attributeDict: [String : String] = [:]) {
         
         currentElement = elementName
-        if elementName == FeedKeys.item {
+        if elementName == FeedTags.item {
             isItemAppending = true
             currentDictionary = [:]
         }
         
-        if (isItemAppending && feedKeys.contains(elementName)) ||
-        elementName == FeedKeys.description {
+        if (isItemAppending && feedTags.contains(elementName)) ||
+        elementName == FeedTags.description {
             currentValue = ""
         }
     }
@@ -102,7 +102,7 @@ extension FeedParser: XMLParserDelegate {
     func parser(_ parser: XMLParser,
                 foundCharacters string: String) {
         
-        if isItemAppending || currentElement == FeedKeys.description {
+        if isItemAppending || currentElement == FeedTags.description {
             currentValue += string
         }
     }
@@ -112,17 +112,17 @@ extension FeedParser: XMLParserDelegate {
                 namespaceURI: String?,
                 qualifiedName qName: String?) {
         
-        if !isItemAppending && elementName == FeedKeys.description {
-            rssFeed?.feedName = currentValue
+        if !isItemAppending && elementName == FeedTags.description {
+            rssFeed?.feedName = getViewableFeedTitle(for: currentValue)
         }
         
         
-        if elementName == FeedKeys.item {
+        if elementName == FeedTags.item {
             if let currDict = currentDictionary {
                 results?.append(currDict)
             }
             isItemAppending = false
-        } else if isItemAppending && feedKeys.contains(elementName) {
+        } else if isItemAppending && feedTags.contains(elementName) {
             currentDictionary![elementName] = currentValue
             currentValue = ""
         }
@@ -131,6 +131,33 @@ extension FeedParser: XMLParserDelegate {
     func parser(_ parser: XMLParser,
                 parseErrorOccurred parseError: Error) {
          
-        //show an alert here and reload table
+        print("Parsing failed due to error \(parseError)")
+    }
+    
+    private func getViewableFeedTitle(for title: String) -> String {
+        var modifiedTitle = title
+        switch title {
+        case RSSFeedTitles.rssOpinion.rawValue:
+            modifiedTitle = ViewableFeedTitles.opinion.rawValue
+            break
+        case RSSFeedTitles.worldNews.rawValue:
+            modifiedTitle = ViewableFeedTitles.worldNews.rawValue
+            break
+        case RSSFeedTitles.usBusiness.rawValue:
+            modifiedTitle = ViewableFeedTitles.usBusiness.rawValue
+            break
+        case RSSFeedTitles.tech.rawValue:
+            modifiedTitle = ViewableFeedTitles.tech.rawValue
+            break
+        case RSSFeedTitles.markets.rawValue:
+            modifiedTitle = ViewableFeedTitles.markets.rawValue
+            break
+        case RSSFeedTitles.lifestyle.rawValue:
+            modifiedTitle = ViewableFeedTitles.lifestyle.rawValue
+            break
+        default:
+            break
+        }
+        return modifiedTitle
     }
 }

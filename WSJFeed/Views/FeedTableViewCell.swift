@@ -9,10 +9,17 @@
 import UIKit
 
 class FeedTableViewCell: UITableViewCell {
-
+    
+    
+    @IBOutlet weak var headlineLabel: UILabel!
+    @IBOutlet weak var descriptionLabel: UILabel!
+    @IBOutlet weak var categoryLabel: UILabel!
+    @IBOutlet weak var dateLabel: UILabel!
+    
     override func awakeFromNib() {
         super.awakeFromNib()
-        // Initialization code
+        
+        selectionStyle = UITableViewCell.SelectionStyle.none
     }
 
     override func setSelected(_ selected: Bool, animated: Bool) {

@@ -12,6 +12,7 @@ class NetworkUtility {
     static let shared = NetworkUtility()
     private init() {}
     
+    /// Fetches data for given endpoint and hands over the result to the caller
     func fetchRSSFeed(for urlString: String, completion: @escaping (Data?, Error?) -> Void) {
         if let url = URL(string: urlString) {
             let urlRequest = URLRequest(url: url)

@@ -16,7 +16,15 @@ struct Feed {
 struct FeedItem {
     var title: String?
     var description: String?
-    var publishedDate: Date?
+    var publishedDateStr: String?
+    var publishedDate: Date? {
+        didSet {
+            let dateFormatter: DateFormatter = DateFormatter()
+            dateFormatter.dateFormat = DateFormats.viewDateFormat.rawValue
+            publishedDateStr = dateFormatter.string(from: publishedDate!)
+        }
+    }
+    
     var category: String?
     var link: String?
 }

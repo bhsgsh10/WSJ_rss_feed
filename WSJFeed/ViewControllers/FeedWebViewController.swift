@@ -23,8 +23,13 @@ class FeedWebViewController: UIViewController {
             return
         }
         
-        navigationController?.navigationBar.prefersLargeTitles = false
-        webView.addObserver(self, forKeyPath: "estimatedProgress", options: .new, context: nil)
+        navigationItem.largeTitleDisplayMode = .never
+        self.navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Back",
+                                                                style: .plain,
+                                                                target: self,
+                                                                action: #selector(goBack))
+        webView.addObserver(self, forKeyPath: "estimatedProgress",
+                            options: .new, context: nil)
         
         let urlRequest = URLRequest(url: url)
         webView.load(urlRequest)
@@ -44,8 +49,10 @@ class FeedWebViewController: UIViewController {
         if webView.canGoBack {
             webView.goBack()
         } else {
-            dismiss(animated: true,
-                    completion: nil)
+            DispatchQueue.main.async {[weak self] in
+                self?.dismiss(animated: true,
+                              completion: nil)
+            }
         }
     }
     

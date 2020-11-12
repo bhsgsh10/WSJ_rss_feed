@@ -7,105 +7,199 @@
 //
 
 import UIKit
-import WebKit
 
 class ViewController: UIViewController {
     
+    //MARK: - IBOutlets
     @IBOutlet weak var rssTableView: UITableView!
+    @IBOutlet weak var activityIndicator: UIActivityIndicatorView!
     
-    var rssFeed: Feed?
-    var xmlParser: FeedParser?
+    //MARK: - Properties
+    var feedViewModel: FeedViewModel?
     
+    //MARK: - Local constants
+    enum LocalConstants {
+        static let tableCellReuseIdentifier = "feedCell"
+        static let estimatedTableRowHeight: CGFloat = 400.0
+        static let headerViewBackgroundColor = UIColor(red: 238/255,
+                                                green: 238/255,
+                                                blue: 238/255,
+                                                alpha: 1.0)
+        static let headerLabelFont = UIFont(name: "Helvetica", size: 20)
+        static let headerViewHeight: CGFloat = 60.0
+        static let labelHeight: CGFloat = 28.0
+        static let margin: CGFloat = 16.0
+        static let alertTitle: String = "No Data Found"
+        static let alertMessage: String = "No feed was found. Please try again later"
+        static let close: String = "Close"
+    }
+    
+    //MARK: - View life cycle
     override func viewDidLoad() {
         super.viewDidLoad()
         
         setupTableView()
-        fetchFeed()
+        setupActivityIndicator()
+        configureNavigationBar(largeTitles: false)
+        
+        initiateFeedViewModel()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        configureNavigationBar()
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        configureNavigationBar(largeTitles: true)
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        configureNavigationBar(largeTitles: false)
+    }
+}
+
+//MARK: - Private functions
+extension ViewController {
+    /// Sets up delegate and data source for the rssTableView, registers cells and sets row heights
     private func setupTableView() {
         rssTableView.delegate = self
         rssTableView.dataSource = self
         
-        let nib = UINib(nibName: "FeedTableViewCell", bundle: nil)
-        rssTableView.register(nib, forCellReuseIdentifier: "feedCell")
-        
-        rssTableView.estimatedRowHeight = 400
-        rssTableView.rowHeight = UITableView.automaticDimension
+        let nib = UINib(nibName: IBFiles.feedTableCell.rawValue, bundle: nil)
+        rssTableView.register(nib, forCellReuseIdentifier: LocalConstants.tableCellReuseIdentifier)
     }
     
-    private func configureNavigationBar() {
+    ///Sets up the activity indicator and starts animating
+    private func setupActivityIndicator() {
+        view.bringSubviewToFront(activityIndicator)
+        activityIndicator.isHidden = false
+        activityIndicator.startAnimating()
+    }
+    
+    /// Configures the navigation bar
+    private func configureNavigationBar(largeTitles: Bool) {
+        self.title = "News Feed"
         navigationController?.navigationBar.prefersLargeTitles = true
     }
     
-    private func fetchFeed() {
-        NetworkUtility.shared.fetchRSSFeed(for: FeedType.worldNews.rawValue) {[weak self] data, error in
+    /// Instantiates the view model and asks it to fetch data. Waits for completion and updates UI
+    private func initiateFeedViewModel() {
+        feedViewModel = FeedViewModel()
+        feedViewModel?.getFeedData {[weak self] in
+            self?.updateUI()
+        }
+    }
+    
+    /// Stops activity indicator and reloads table
+    private func updateUI() {
+        
+        DispatchQueue.main.async {[weak self] in
             
-            guard let data = data, error == nil else {
-                print(error!)
-                //show an alert from here
+            self?.activityIndicator.isHidden = true
+            self?.activityIndicator.stopAnimating()
+            self?.rssTableView.reloadData()
+            
+            guard let _ = self?.feedViewModel?.rssFeed else {
+                self?.showNoDataAlert()
                 return
             }
-            
-            let parser = FeedParser()
-            if let feed: Feed = parser.parseFeed(with: data) {
-                //reload table here
-                self?.rssFeed = feed
-                DispatchQueue.main.async {
-                    self?.title = feed.feedName
-                    self?.rssTableView.reloadData()
-                }
-            }
-        }
-    }
-
-}
-
-extension ViewController: UITableViewDataSource, UITableViewDelegate {
-    
-    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return rssFeed?.feedItems?.count ?? 0
-    }
-    
-    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        var cell = tableView.dequeueReusableCell(withIdentifier: "feedCell",
-                                                 for: indexPath) as! FeedTableViewCell
-        
-        if let feedItem = rssFeed?.feedItems?[indexPath.row] {
-            cell = configureFeedCell(cell: cell, feedItem: feedItem)
-        }
-        return cell
-    }
-    
-    func tableView(_ tableView: UITableView,
-                   didSelectRowAt indexPath: IndexPath) {
-        
-        let row = indexPath.row
-        if let link = rssFeed?.feedItems?[row].link {
-            let storyboard = UIStoryboard(name: "Main", bundle: nil)
-            let webviewVC = storyboard.instantiateViewController(withIdentifier: "FeedWebViewController") as! FeedWebViewController
-            webviewVC.webUrl = URL(string: link)
-            navigationController?.pushViewController(webviewVC, animated: true)
         }
     }
     
-    private func configureFeedCell(cell: FeedTableViewCell, feedItem: FeedItem) -> FeedTableViewCell {
+    /// Shows alert when no data is received
+    private func showNoDataAlert() {
+        let alertController = UIAlertController(title: LocalConstants.alertTitle,
+                                                message: LocalConstants.alertMessage,
+                                                preferredStyle: .alert)
+        let action = UIAlertAction(title: LocalConstants.close,
+                                   style: .cancel,
+                                   handler: nil)
+        alertController.addAction(action)
+        navigationController?.present(alertController,
+                                        animated: true,
+                                        completion: nil)
+    }
+    
+    /// Configures the text values for different labels in FeedTableViewCell
+    private func configureFeedCell(cell: FeedTableViewCell,
+                                   feedItem: FeedItem) -> FeedTableViewCell {
            
        cell.headlineLabel.text = feedItem.title
        cell.descriptionLabel.text = feedItem.description
-        
-       let dateFormatter = DateFormatter()
-       dateFormatter.dateFormat = DateFormats.viewDateFormat.rawValue
-       let date = dateFormatter.string(from: feedItem.publishedDate!)
-       cell.dateLabel.text = date
-       
+       cell.dateLabel.text = feedItem.publishedDateStr
        cell.categoryLabel.text = feedItem.category?.uppercased()
        
        return cell
-       }
+    }
+}
+
+//MARK: - UITableView Data source and delegate methods
+extension ViewController: UITableViewDataSource, UITableViewDelegate {
+    
+    //MARK: -- Number of values
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return feedViewModel?.rssFeed?.count ?? 0
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        
+        return feedViewModel?.rssFeed?[section]?.feedItems?.count ?? 0
+    }
+    
+    //MARK: -- Estimating heights
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return LocalConstants.headerViewHeight
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return UITableView.automaticDimension
+    }
+    
+    func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
+        return LocalConstants.estimatedTableRowHeight
+    }
+    
+    //MARK: -- Headers and cells
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        let headerView = UIView(frame: CGRect(x: 0, y: 0,
+                                              width: view.bounds.width, height: LocalConstants.headerViewHeight))
+        let label = UILabel(frame: CGRect(x: LocalConstants.margin, y: LocalConstants.margin,
+                                          width: view.bounds.width - LocalConstants.margin, height: LocalConstants.labelHeight))
+        
+        label.font = LocalConstants.headerLabelFont
+        headerView.addSubview(label)
+        headerView.backgroundColor = LocalConstants.headerViewBackgroundColor
+        label.text = feedViewModel?.rssFeed?[section]?.feedName ?? ""
+        
+        return headerView
+    }
+    
+    func tableView(_ tableView: UITableView,
+                   cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        var cell = tableView.dequeueReusableCell(withIdentifier: LocalConstants.tableCellReuseIdentifier,
+                                                 for: indexPath) as! FeedTableViewCell
+        
+        if let feedItem = feedViewModel?.rssFeed?[indexPath.section]?.feedItems?[indexPath.row] {
+            cell = configureFeedCell(cell: cell, feedItem: feedItem)
+        }
+
+        return cell
+    }
+    
+    //MARK: -- Handle cell click
+    func tableView(_ tableView: UITableView,
+                   didSelectRowAt indexPath: IndexPath) {
+        
+        let urlLink = feedViewModel?.rssFeed?[indexPath.section]?.feedItems?[indexPath.row].link
+        if let link = urlLink  {
+            let storyboard = UIStoryboard(name: IBFiles.storyboardName.rawValue, bundle: nil)
+            
+            let webviewVC = storyboard.instantiateViewController(withIdentifier: IBFiles.feedWebViewController.rawValue) as! FeedWebViewController
+            webviewVC.webUrl = URL(string: link)
+            let navController = UINavigationController(rootViewController: webviewVC)
+            DispatchQueue.main.async {[weak self] in
+                self?.navigationController?.present(navController,
+                                                    animated: true,
+                                                    completion: nil)  
+            }
+        }
+    }
 }
