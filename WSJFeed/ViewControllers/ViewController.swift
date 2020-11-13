@@ -16,9 +16,10 @@ class ViewController: UIViewController {
     
     //MARK: - Properties
     var feedViewModel: FeedViewModel?
+    private var sectionHeaderHeights: [CGFloat] = []
     
     //MARK: - Local constants
-    enum LocalConstants {
+    fileprivate enum LocalConstants {
         static let tableCellReuseIdentifier = "feedCell"
         static let estimatedTableRowHeight: CGFloat = 400.0
         static let headerViewBackgroundColor = UIColor(red: 238/255,
@@ -84,8 +85,23 @@ extension ViewController {
     private func initiateFeedViewModel() {
         feedViewModel = FeedViewModel()
         feedViewModel?.getFeedData {[weak self] in
-            self?.updateUI()
+            self?.computeSectionHeaderHeights { [weak self] in
+                self?.updateUI()
+            }
         }
+    }
+    
+    private func computeSectionHeaderHeights(completion: () -> ()) {
+        guard let feeds = feedViewModel?.rssFeed else {
+            return
+        }
+        
+        for (_, feed) in feeds {
+            if let items = feed.feedItems, items.count > 0 {
+                sectionHeaderHeights.append(LocalConstants.headerViewHeight)
+            }
+        }
+        completion()
     }
     
     /// Stops activity indicator and reloads table
@@ -136,7 +152,7 @@ extension ViewController: UITableViewDataSource, UITableViewDelegate {
     
     //MARK: -- Number of values
     func numberOfSections(in tableView: UITableView) -> Int {
-        return feedViewModel?.rssFeed?.count ?? 0
+        return sectionHeaderHeights.count
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -146,7 +162,8 @@ extension ViewController: UITableViewDataSource, UITableViewDelegate {
     
     //MARK: -- Estimating heights
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return LocalConstants.headerViewHeight
+        
+        return sectionHeaderHeights[section]
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {

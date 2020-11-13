@@ -50,7 +50,7 @@ class FeedViewModel {
     ///
     /// Takes the title and runs it through a switch-case to get the required key values.
     private func getKey(for title: String) -> Int {
-        var key = 0
+        var key = -1
         switch title {
         case ViewableFeedTitles.opinion.rawValue:
            key = 0
