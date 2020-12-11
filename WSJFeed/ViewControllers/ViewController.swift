@@ -85,7 +85,7 @@ extension ViewController {
     private func initiateFeedViewModel() {
         feedViewModel = FeedViewModel()
         feedViewModel?.getFeedData {[weak self] in
-            self?.computeSectionHeaderHeights { [weak self] in
+            self?.computeSectionHeaderHeights {
                 self?.updateUI()
             }
         }
@@ -107,14 +107,14 @@ extension ViewController {
     /// Stops activity indicator and reloads table
     private func updateUI() {
         
-        DispatchQueue.main.async {[weak self] in
+        DispatchQueue.main.async {
             
-            self?.activityIndicator.isHidden = true
-            self?.activityIndicator.stopAnimating()
-            self?.rssTableView.reloadData()
+            self.activityIndicator.isHidden = true
+            self.activityIndicator.stopAnimating()
+            self.rssTableView.reloadData()
             
-            guard let _ = self?.feedViewModel?.rssFeed else {
-                self?.showNoDataAlert()
+            guard let _ = self.feedViewModel?.rssFeed else {
+                self.showNoDataAlert()
                 return
             }
         }
@@ -212,10 +212,10 @@ extension ViewController: UITableViewDataSource, UITableViewDelegate {
             let webviewVC = storyboard.instantiateViewController(withIdentifier: IBFiles.feedWebViewController.rawValue) as! FeedWebViewController
             webviewVC.webUrl = URL(string: link)
             let navController = UINavigationController(rootViewController: webviewVC)
-            DispatchQueue.main.async {[weak self] in
-                self?.navigationController?.present(navController,
-                                                    animated: true,
-                                                    completion: nil)  
+            DispatchQueue.main.async {
+                self.navigationController?.present(navController,
+                                                   animated: true,
+                                                   completion: nil)
             }
         }
     }
